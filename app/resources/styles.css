@@ -1,0 +1,61 @@
+html {
+    filter: invert(1) hue-rotate(180deg) contrast(85%);
+}
+
+button, input {    
+    /*color: rgb(200, 195, 188) !important;*/
+    vertical-align: middle;
+}
+.pure-u-4-5 {
+    margin-right: 10px;
+    width: 80%;
+}
+.form-group{
+    margin-bottom: 20px;
+}
+label{
+    margin-bottom: 0;
+    display: block;
+}
+.btn.icon {
+    font-size: 1.1em;
+}
+input[readonly], select[readonly]{
+    /*background-color: rgb(40, 40, 40);*/
+    filter: contrast(80%);
+}
+.pane-sm.sidebar {
+    /*padding: 10px 0px;*/
+}
+.sidebar .nav-group-item{
+    padding-top: 5px;
+    padding-bottom: 5px;
+}
+.link:hover{
+    cursor: pointer;
+    text-decoration: underline;
+}
+.toolbar-footer{
+    padding: 0 5px;
+}
+#fileprogress{
+    width: 100%;
+}
+.fileprogresscontainer{
+    text-align: center;
+}
+select option {
+    background-color: #131313;
+    color: rgb(200, 195, 188);
+}
+.rotating {
+    animation: rotate 1.5s linear infinite;
+}
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}

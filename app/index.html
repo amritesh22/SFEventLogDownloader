@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Event Log Downloader</title>        
+        <link rel="stylesheet" href="./resources/photon/css/photon.css" />
+        <!--link rel="stylesheet" href="./resources/pure-min.css" /-->
+        <link rel="stylesheet" href="./resources/vue-multiselect/vue-multiselect.esm.css" />        
+        <link rel="stylesheet" href="./resources/styles.css" />
+        <script type="importmap">
+            { "imports": 
+                { 
+                    "vue": "./resources/vue.esm-browser.js",
+                    "vue-multiselect": "./resources/vue-multiselect/vue-multiselect.esm.js"
+                } 
+            }
+        </script>
+    </head>
+
+    <body>
+        <div class="window" id="app">
+
+            <!--header class="toolbar toolbar-header">
+              <h1 class="title">Event Log Downloader</h1>
+            </header-->
+
+            <div class="window-content">
+                <div class="pane-group">
+
+                    <!-- Side Bar -->
+                    <div class="pane-sm sidebar">
+                        <div class="nav-group-item" :class="{'active': selectedsidebarnav=='home'}" @click="selectedsidebarnav='home'">
+                            <span class="icon icon-home"></span>Home
+                        </div>
+                        <div class="nav-group-item" :class="{'active': selectedsidebarnav=='settings'}" @click="selectedsidebarnav='settings'">
+                            <span class="icon icon-cog"></span>Settings
+                        </div>
+                    </div>
+
+                    <!-- Home Pane -->
+                    <div class="pane padded-more" v-if="selectedsidebarnav=='home'">
+                        <div class="form-group">
+                            <label for="interval">Interval</label>
+                            <select id="interval" v-model="interval" class="form-control pure-u-4-5">
+                                <option>Daily</option>
+                                <option>Hourly</option>
+                                <option value="">All</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Event Type</label>
+                            <div class="pure-u-4-5">
+                            <multiselect v-model="selectedeventtype" tag-placeholder="Add this as new tag" placeholder="Search or add a tag" :options="eventtypelist" :multiple="true" :taggable="true" :close-on-select="false"></multiselect>
+                            <!--select id="eventtype" v-model="selectedeventtype" class="form-control pure-u-4-5">                                
+                            </select-->
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="startDate">From Date</label>
+                            <input type="date" id="startDate" class="form-control pure-u-4-5" v-model="startdate" />
+                        </div>
+                        <div class="form-group">
+                            <label for="endDate">To Date</label>
+                            <input type="date" id="endDate" class="form-control pure-u-4-5" v-model="enddate" />
+                        </div>
+                        <div class="form-group">
+                            <label for="outputFolder">Output Folder</label>                            
+                            <input type="text" id="outputFolder"  class="form-control pure-u-4-5" readonly v-model="settings.outputfolder" />    
+                            <button id="selectfolder" @click="selectFolder" class="btn btn-default icon icon-folder">
+                            </button>                        
+                        </div>
+                        <div class="form-group checkbox">
+                            <label>
+                              <input type="checkbox" v-model="settings.seperatefolder"> Seperate folder for each day
+                            </label>
+                        </div>
+                        <!--div class="form-group">
+                          <label for="authorization" class="link" @click="selectedsidebarnav='settings'">Authorization</label>
+                          <input id="authorization" class="form-control pure-u-4-5" readonly v-model="authorizationoptionlist[settings.authorization]"/>                          
+                        </div-->
+                        
+                        <div class="form-actions">
+                            <button id="download" class="btn btn-form btn-large btn-primary" @click="downloadlogs" >
+                                Download
+                            </button>
+                            <div class="pure-u-4-5 fileprogresscontainer" v-if="fileprogress.status>0">
+                                <span v-if="fileprogress.status==1">Starting download...</span>
+                                <span v-if="fileprogress.status==2">
+                                {{fileprogress.filesdownloaded}} files downloaded out of {{fileprogress.totalfiles}}
+                                </span>
+                                <progress id="fileprogress" :value="progressRate"></progress>                                    
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Settings Pane -->
+                    <div class="pane padded-more" v-if="selectedsidebarnav=='settings'">
+
+                      <div class="form-group">
+                        <label for="authorization">Authorization</label>
+                            <select id="authorization" class="form-control pure-u-4-5" v-model="settings.authorization">
+                                <option></option>
+                                <option v-for="[auth,label] in Object.entries(authorizationoptionlist)" :key="auth" :value="auth">{{label}}</option>                             
+                            </select>
+                        </div>
+
+                        <div class="form-group" v-if="settings.authorization=='cli'">
+                            <label for="orgs">Org</label>
+                            <select id="orgs" class="form-control pure-u-4-5" v-model="settings.selectedorg">
+                                <option></option>
+                                <option v-for="org in settings.orglist" :key="org.username" :value="org.username">{{org.alias}} ({{ org.username }})</option>
+                            </select>
+                            <button id="getorglist" class="btn btn-default" @click="fetchOrgList">
+                                <span class="icon icon-cw"></span>
+                            </button>
+                        </div>
+
+                        <div class="form-group" v-if="settings.authorization=='unamepass'">
+                            <label for="username">Username</label>
+                            <input id="username" class="form-control pure-u-4-5" v-model="settings.username"/>                                                    
+                        </div>
+                        <div class="form-group" v-if="settings.authorization=='unamepass'">
+                            <label for="password">Password (+ security token)</label>
+                            <input id="password" class="form-control pure-u-4-5" v-model="settings.password"/>                                                    
+                        </div>
+                        <div class="form-group" v-if="settings.authorization=='unamepass'">
+                            <label for="loginurl">Login Url</label>
+                            <select id="loginurl" v-model="settings.loginurl" class="form-control pure-u-4-5">
+                                <option></option>
+                                <option>login.salesforce.com</option>
+                                <option>test.salesforce.com</option>
+                            </select>
+                            <!--input id="loginurl" class="form-control pure-u-4-5" v-model="settings.loginurl"/-->
+                        </div>
+
+                        <div class="form-group" v-if="settings.authorization=='token'">
+                          <label for="token">Access Token</label>
+                          <input id="token" class="form-control pure-u-4-5" v-model="settings.accesstoken"/>                                                    
+                        </div>
+                        <div class="form-group" v-if="settings.authorization=='token'">
+                            <label for="instanceurl">Instance Url</label>
+                            <input id="instanceurl" class="form-control pure-u-4-5" v-model="settings.instanceurl"/>                                                    
+                          </div>
+
+                    </div>
+                </div>
+            </div>
+            <footer class="toolbar toolbar-footer">
+                <div v-if="settings.authorization=='cli' && orgdetails && orgdetails.username">Selected org : {{orgdetails.alias}} ({{orgdetails.username}})</div>
+                <div v-if="settings.authorization=='unamepass' && settings.loginurl">Authorization : {{authorizationoptionlist[settings.authorization]}} | {{settings.loginurl}}</div>
+                <div v-if="settings.authorization=='token' && settings.instanceurl">Authorization : {{authorizationoptionlist[settings.authorization]}} | {{settings.instanceurl}}</div>
+            </footer>
+        </div>
+
+        <script src="./renderer.js" type="module"></script>
+    </body>
+</html>
