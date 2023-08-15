@@ -6,12 +6,46 @@ button, input {
     /*color: rgb(200, 195, 188) !important;*/
     vertical-align: middle;
 }
+.form-control, input, select{
+    padding: 3px 4px;
+}
+.multiselect{
+    min-height: 10px;
+}
+.multiselect__select{
+    height: 20px;
+    line-height: inherit;
+}
+.multiselect__tags{
+    padding: 4px 2px 0px 4px;
+    min-height: 10px;
+}
+.multiselect__placeholder{
+    padding: 0px;
+    margin-bottom: 2px;
+}
+.multiselect__input{
+    min-height: 20px;
+    height: 20px;
+    line-height: 20px;
+    margin-bottom: 0px;
+}
+.multiselect__option{
+    min-height: 20px;
+    padding: 4px;
+}
+.multiselect__option::after{
+    line-height: 20px;
+}
+.multiselect, .multiselect__input, .multiselect__single{
+    font-size: 14px;
+}
 .pure-u-4-5 {
     margin-right: 10px;
     width: 80%;
 }
 .form-group{
-    margin-bottom: 20px;
+    margin-bottom: 10px;
 }
 label{
     margin-bottom: 0;
@@ -20,12 +54,16 @@ label{
 .btn.icon {
     font-size: 1.1em;
 }
+.form-actions, .fileprogresscontainer{
+    margin-top: 20px;;
+}
+.form-actions .btn{
+    font-size: 1.05em;
+    width: 80%;
+}
 input[readonly], select[readonly]{
     /*background-color: rgb(40, 40, 40);*/
     filter: contrast(80%);
-}
-.pane-sm.sidebar {
-    /*padding: 10px 0px;*/
 }
 .sidebar .nav-group-item{
     padding-top: 5px;
