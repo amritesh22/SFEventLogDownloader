@@ -30,6 +30,7 @@ const app = createApp({
             loginurl: null,
             accesstoken: null,
             instanceurl: null,
+            storecreds: ref(false),
             orglist: []
         })
         const fileprogress = ref({
@@ -56,12 +57,26 @@ const app = createApp({
             return 0;
         });
 
-        watch(settings, (newValue) => {            
-            if(electronApi) {
-                electronApi.savesettings(JSON.stringify(newValue), null, 2);
-            }
+        watch(settings, () => {            
+            savesettings();
         },
-        { deep: true });   
+        { deep: true });
+        
+        function savesettings() {
+            //console.log(settings.value);
+            const tosave = {...settings.value};
+            if(!settings.value.storecreds) {
+                //tosave.selectedorg = null;
+                delete tosave.username;
+                delete tosave.password;
+                //tosave.loginurl = null;
+                delete tosave.accesstoken;
+                //tosave.instanceurl = null;
+            }
+            if(electronApi) {
+                electronApi.savesettings(JSON.stringify(tosave, null, 2));
+            }
+        }
         
         async function readsetting() {  
             if(!electronApi) return;

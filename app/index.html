@@ -51,9 +51,9 @@
                         </div>
 
                         <div class="form-group">
-                            <label>Event Type</label>
+                            <label>Event Type (Default:All)</label>
                             <div class="pure-u-4-5">
-                            <multiselect v-model="selectedeventtype" tag-placeholder="Add this as new tag" placeholder="Search or add a tag" :options="eventtypelist" :multiple="true" :taggable="true" :close-on-select="false"></multiselect>
+                            <multiselect v-model="selectedeventtype" placeholder="Search or add a tag" :options="eventtypelist" :multiple="true" :taggable="true" :close-on-select="false"></multiselect>
                             <!--select id="eventtype" v-model="selectedeventtype" class="form-control pure-u-4-5">                                
                             </select-->
                             </div>
@@ -100,7 +100,13 @@
                     <!-- Settings Pane -->
                     <div class="pane padded-more" v-if="selectedsidebarnav=='settings'">
 
-                      <div class="form-group">
+                        <div class="form-group checkbox">
+                            <label>
+                              <input type="checkbox" v-model="settings.storecreds"> Store credentials
+                            </label>
+                        </div>
+
+                        <div class="form-group">
                         <label for="authorization">Authorization</label>
                             <select id="authorization" class="form-control pure-u-4-5" v-model="settings.authorization">
                                 <option></option>
@@ -125,7 +131,7 @@
                         </div>
                         <div class="form-group" v-if="settings.authorization=='unamepass'">
                             <label for="password">Password (+ security token)</label>
-                            <input id="password" class="form-control pure-u-4-5" v-model="settings.password"/>                                                    
+                            <input id="password" type="password" class="form-control pure-u-4-5" v-model="settings.password"/>                                                    
                         </div>
                         <div class="form-group" v-if="settings.authorization=='unamepass'">
                             <label for="loginurl">Login Url</label>
@@ -139,7 +145,7 @@
 
                         <div class="form-group" v-if="settings.authorization=='token'">
                           <label for="token">Access Token</label>
-                          <input id="token" class="form-control pure-u-4-5" v-model="settings.accesstoken"/>                                                    
+                          <input id="token" type="password" class="form-control pure-u-4-5" v-model="settings.accesstoken"/>                                                    
                         </div>
                         <div class="form-group" v-if="settings.authorization=='token'">
                             <label for="instanceurl">Instance Url</label>
