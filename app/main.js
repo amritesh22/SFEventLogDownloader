@@ -71,6 +71,25 @@ async function downloadEventLogFiles(data) {
   
   try {
 
+    let access_token, instance_url;
+    if(data.org) {
+      const logindata = await getaccesstokenfromcli(data.org);
+      access_token = logindata.accessToken;
+      instance_url = logindata.instanceUrl;
+    } else if(data.accesstoken && data.instanceurl) {
+      access_token = data.accesstoken;
+      instance_url = data.instanceurl;
+    } else if(data.username && data.password && data.loginurl) {
+      const logindata = await salesforcelogin(data.username , data.password, data.loginurl);
+      access_token = logindata.accessToken;
+      instance_url = logindata.instanceUrl;
+    } else {
+      throw new Error("Insufficient authorization details.");
+    }
+
+    console.log(`access_token: ${access_token}`);
+    console.log(`instance_url: ${instance_url}`);
+
     let query = `SELECT Id, EventType, LogDate, LogFileLength, Interval, ApiVersion FROM EventLogFile WHERE Id!=null`;
     if (data.interval)  query += ` AND Interval='${data.interval}'`;
     else query += ` AND Interval IN ('Hourly', 'Daily')`;
@@ -81,48 +100,34 @@ async function downloadEventLogFiles(data) {
     if (data.startDate && data.endDate) query += ` AND LogDate>=${data.startDate}T00:00:00Z AND LogDate<=${data.endDate}T00:00:00Z`;
     
     query += ` ORDER BY LogDate,EventType`;
-    let result;
-    if(data.org) {
-      let cmd = `sf data query -o ${data.org} -q "${query}" --json`;
-      //console.log(`Event log query : ${query}`);
-      console.log(`Command : ${cmd}`);      
-      const { stdout, stderr } = await exec(cmd);         
-      if (stderr) {
-        dialog.showErrorBox('Error', stderr);
-        return;
-      }
-      result = JSON.parse(stdout);
+      
+    /*let cmd = `sf data query -o ${data.org} -q "${query}" --json`;
+    //console.log(`Event log query : ${query}`);
+    console.log(`Command : ${cmd}`);      
+    const { stdout, stderr } = await exec(cmd);         
+    if (stderr) {
+      dialog.showErrorBox('Error', stderr);
+      return;
     }
+    result = JSON.parse(stdout);*/
+
     console.log(`Event log query : ${query}`);
-    
-    if(result && result.status === 0) {
-      const records = result.result.records;
-      if(!records || records.length==0) {
-        console.log('No records found');
-        dialog.showMessageBox('INFO ', 'No records found');
-      }      
-      else if(records.length>0) {
+    let queryendpoint = instance_url+'/services/data/v'+API_VERSION+'/query?q=' + encodeURIComponent(query);
+    let headr = {
+      'Authorization': `Bearer ${access_token}`,
+      'Content-Type': 'application/json'
+    };
+    const response = await axios.get(queryendpoint, { headers: headr });
+    console.log(response.data.records.length);
+    //const result = response.data;
+    const records = response.data.records;
+    if(!records || records.length==0) {
+      console.log('No records found');
+      dialog.showErrorBox('Info', 'No records found');
+    }  
+    else if(records.length>0) {
 
-        mainWindow.webContents.send('filesfound', records.length);
-
-        let access_token, instance_url;
-        if(data.org) {
-          const logindata = await getaccesstokenfromcli(data.org);
-          access_token = logindata.accessToken;
-          instance_url = logindata.instanceUrl;
-        } else if(data.accesstoken && data.instanceurl) {
-          access_token = data.accesstoken;
-          instance_url = data.instanceurl;
-        } else if(data.username && data.password && data.loginurl) {
-          const logindata = await salesforcelogin(data.username , data.password, data.loginurl);
-          access_token = logindata.accessToken;
-          instance_url = logindata.instanceUrl;
-        } else {
-          throw new Error("Insufficient authorization details.");
-        }
-
-        console.log(`access_token: ${access_token}`);
-        console.log(`instance_url: ${instance_url}`);
+        mainWindow.webContents.send('filesfound', records.length);        
 
         let compress = 'yes';
         let headers;
@@ -162,12 +167,8 @@ async function downloadEventLogFiles(data) {
           downloadFile(url, headers, filename);
           mainWindow.webContents.send('filedownloadupdate');
           
-        };
-      }
-    } else {
-      dialog.showMessageBox('INFO ', 'No records found');
-    }
-  
+        }
+    }  
   } catch(error){
     console.error(`Error: ${error}`);
     dialog.showErrorBox('Error', error.message);    
@@ -263,34 +264,29 @@ async function downloadFile(url, headers, filename) {
 async function salesforcelogin(username, password, baseurl) {
 
 	const loginUrl = `https://${baseurl || 'login.salesforce.com'}/services/Soap/u/${API_VERSION}`;
+  console.log(`loginUrl: ${loginUrl}`);
+	const soapRequest = `<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:urn="urn:partner.soap.sforce.com">
+	<soapenv:Body>
+		<urn:login>
+			<urn:username>${username}</urn:username>
+			<urn:password>${password}</urn:password>
+		</urn:login>
+	</soapenv:Body>
+  </soapenv:Envelope>`;
 
-	const soapRequest = `
-  <?xml version="1.0" encoding="utf-8" ?>
-  <env:Envelope xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
-    <env:Body>
-      <n1:login xmlns:n1="urn:partner.soap.sforce.com">
-        <n1:username><![CDATA[${username}]]></n1:username>
-        <n1:password><![CDATA[${password}]]></n1:password>
-      </n1:login>
-    </env:Body>
-  </env:Envelope>
-`;
+	const response = await axios.post(loginUrl, soapRequest, {
+		headers: {
+			"Content-Type": "text/xml; charset=UTF-8",
+			"SOAPAction": "login",
+			"Accept": "text/xml"
+		}
+	});
+	// Convert the XML response to a JavaScript object
+	const parsed = await xml2js.parseStringPromise(response.data); //, (err, response) => {
+	const accessToken = parsed['soapenv:Envelope']['soapenv:Body'][0]['loginResponse'][0]['result'][0]['sessionId'][0];
+  let instanceUrl = parsed['soapenv:Envelope']['soapenv:Body'][0]['loginResponse'][0]['result'][0]['serverUrl'][0];
+  instanceUrl = instanceUrl.split('/services')[0];
+	console.log('Access token:', accessToken);
 
-const response = await axios.post(loginUrl, soapRequest, {
-    headers: {
-      'Content-Type': 'text/xml; charset=UTF-8',
-      'SOAPAction': 'login',
-      'Accept': 'text/xml'
-    }
-});
-// Convert the XML response to a JavaScript object
-const parsed = await xml2js.parseStringPromise(response.data)//, (err, response) => {
-//.then(function (result) {
-    console.dir(parsed);
-    const result = parsed["soapenv:Envelope"]["soapenv:Body"].loginResponse.result;
-    //const accessToken = result['soapenv:Envelope']['soapenv:Body'][0]['loginResponse'][0]['result'][0]['sessionId'][0];
-    console.log('Access token:', accessToken);
-//});
+  return { accessToken, instanceUrl }
 }
