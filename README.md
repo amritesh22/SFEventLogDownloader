@@ -35,10 +35,10 @@ Check the dist folder for unpacked and packed binaries.
 > For other platform binaries add those targets in package.json
 
 
-
 ## Binaries
+Check the [Releases](https://github.com/amritesh22/SFEventLogDownloader/releases) on this repo for prebuilt binaries.
 
-Check the release on thsi repo for prebuilt binaries.
+
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
