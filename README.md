@@ -1,7 +1,7 @@
 
 # Salesforce eventlog bulk downloader
 
-This electron app allows to eventlog files from salesforce.
+This electron app allows to download eventlog files from salesforce.
 
 
 ## Build
