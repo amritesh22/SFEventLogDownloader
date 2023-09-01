@@ -55,7 +55,13 @@ label{
     font-size: 1.1em;
 }
 .form-actions, .fileprogresscontainer{
-    margin-top: 20px;;
+    margin-top: 20px;    
+}
+.fileprogresscontainer{
+    text-align: center;
+    border: 1px dashed blue;
+    border-radius: 4px;
+    padding: 10px;
 }
 .form-actions .btn{
     font-size: 1.05em;
@@ -79,12 +85,16 @@ input[readonly], select[readonly]{
 #fileprogress{
     width: 100%;
 }
-.fileprogresscontainer{
-    text-align: center;
-}
 select option {
     background-color: #131313;
     color: rgb(200, 195, 188);
+}
+.cancelicon{
+    margin-left: 10px;
+    font-size: 1.3rem;
+    color: red;
+    vertical-align: middle;
+    cursor: pointer;
 }
 .rotating {
     animation: rotate 1.5s linear infinite;
@@ -95,5 +105,16 @@ select option {
     }
     100% {
         transform: rotate(360deg);
+    }
+}
+
+.blinking {
+    animation-name: blinking;
+    animation-duration: 1s;
+    animation-iteration-count: 100;
+}
+@keyframes blinking {
+    50% {
+        border-color: white;
     }
 }

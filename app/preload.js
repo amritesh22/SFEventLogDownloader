@@ -6,9 +6,14 @@ contextBridge.exposeInMainWorld('electronApi', {
     downloadeventlogs: (data) => ipcRenderer.invoke('downloadeventlogs', data),
     savesettings: (data) => ipcRenderer.invoke('savesettings', data),
     readsettings: async (data) => await ipcRenderer.invoke('readsettings'),
+    canceldownload: () => ipcRenderer.invoke('canceldownload'),
+
     filesfound: (callback) => ipcRenderer.on('filesfound', callback),
     filedownloadupdate: (callback) => ipcRenderer.on('filedownloadupdate', callback),
-    filedownloadcomplete: (callback) => ipcRenderer.on('filedownloadcomplete', callback)
+    filedownloadcomplete: (callback) => ipcRenderer.on('filedownloadcomplete', callback),
+    downloadcancelled: (callback) => ipcRenderer.on('downloadcancelled', callback),
+    downloadincomplete: (callback) => ipcRenderer.on('downloadincomplete', callback)
+    
 });
 
 

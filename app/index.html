@@ -87,12 +87,18 @@
                             <button id="download" class="btn btn-form btn-large btn-primary" @click="downloadlogs" >
                                 Download
                             </button>
-                            <div class="pure-u-4-5 fileprogresscontainer" v-if="fileprogress.status>0">
-                                <span v-if="fileprogress.status==1">Starting download...</span>
+                            <div class="pure-u-4-5 fileprogresscontainer blinking" v-if="fileprogress.status>0">
+                                <span v-if="fileprogress.status==1">Starting download...
+                                    <span class="icon icon-cancel cancelicon" @click="canceldownload"></span>
+                                </span>
                                 <span v-if="fileprogress.status==2">
                                 {{fileprogress.filesdownloaded}} files downloaded out of {{fileprogress.totalfiles}}
+                                <span class="icon icon-cancel cancelicon" @click="canceldownload"></span>
                                 </span>
-                                <progress id="fileprogress" :value="progressRate"></progress>                                    
+                                <span v-if="fileprogress.status==3"> Download Completed !! </span>
+                                <span v-if="fileprogress.status==4"> Download Cancelled !! </span>
+                                <span v-if="fileprogress.status==5"> Download Incomplete !! </span>
+                                <progress id="fileprogress" :value="progressRate" v-if="fileprogress.status>0 && fileprogress.status<3"></progress>                                    
                             </div>
                         </div>
                     </div>

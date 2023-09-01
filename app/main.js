@@ -6,6 +6,7 @@ const fsPromise = require('fs').promises;
 const axios = require('axios');
 const exec = util.promisify(require('child_process').exec);
 const xml2js = require('xml2js');
+const os = require("os");
 
 let mainWindow;
 let doDownloading; //possible values are true or false
@@ -21,7 +22,7 @@ function createWindow() {
     }
   });  
   mainWindow.loadFile('app/index.html');
-  //Menu.setApplicationMenu(null);
+  Menu.setApplicationMenu(null);
 
   mainWindow.on('closed', function () {
     mainWindow = null;
@@ -51,9 +52,11 @@ ipcMain.handle('getorglist', () => {
 });
 ipcMain.handle('downloadeventlogs', async (event, data) => {
   doDownloading = true;
-  await downloadEventLogFiles(data);
-  mainWindow.webContents.send('filedownloadcomplete');
-  console.log('Download operation complete !');
+  const result = await downloadEventLogFiles(data);
+  if(result) {
+    mainWindow.webContents.send('filedownloadcomplete');
+    console.log('Download operation complete !');
+  }  
 });
 ipcMain.handle('selectfolder', () => {
   return selectFolderOut();
@@ -64,6 +67,9 @@ ipcMain.handle('savesettings', (event, data) => {
 ipcMain.handle('readsettings', () => {
   const jsondata = readsettingfile();
   return jsondata;
+});
+ipcMain.handle('canceldownload', () => {
+  doDownloading = false;
 });
 
 
@@ -86,10 +92,16 @@ async function downloadEventLogFiles(data) {
     } else {
       throw new Error("Insufficient authorization details.");
     }
-
+    
     console.log(`access_token: ${access_token}`);
     console.log(`instance_url: ${instance_url}`);
 
+    if(!doDownloading) {
+      //console.log('Operation cancelled by user');
+      mainWindow.webContents.send('downloadcancelled');
+      throw new Error('Operation cancelled by user');
+    }
+    
     let query = `SELECT Id, EventType, LogDate, LogFileLength, Interval, ApiVersion FROM EventLogFile WHERE Id!=null`;
     if (data.interval)  query += ` AND Interval='${data.interval}'`;
     else query += ` AND Interval IN ('Hourly', 'Daily')`;
@@ -139,39 +151,31 @@ async function downloadEventLogFiles(data) {
           console.log('Not using gzip compression\n');
         }
         
+        let mapRecordsByDate = {};
+        
+        //create speerate list for each day
         for(let record of records) {
-          
-          if(!doDownloading) {
-            console.warning('Operation cancelled by user');
-            return; //stop if operation cancelled
+          if(!mapRecordsByDate[record.LogDate.slice(0, 10)]) {
+            mapRecordsByDate[record.LogDate.slice(0, 10)] = [];
           }
-
-          const ids = record.Id;
-          const types = record.EventType;
-          const dates = record.LogDate;
-          const interval = record.Interval;
-          
-          const url = instance_url+'/services/data/v'+API_VERSION+'/sobjects/EventLogFile/'+ids+'/LogFile';
-
-          let slicelimit = 13;
-          if(interval && interval=='Daily') slicelimit = 10;
-          
-          let filename = path.join(data.outputFolder, `${dates.slice(0, slicelimit)}-${types}.csv`);
-          
-          if(data.seperatefolder) {  
-            let folder = path.join(data.outputFolder, `${dates.slice(0, 10)}`);
-            filename = path.join(folder, `${dates.slice(11, 13)}-${types}.csv`);
-            if (!fs.existsSync(folder))           
-              fs.mkdirSync(folder, { recursive : true });
-          }
-          downloadFile(url, headers, filename);
-          mainWindow.webContents.send('filedownloadupdate');
-          
+          mapRecordsByDate[record.LogDate.slice(0, 10)].push(record);
         }
+        //console.log(mapRecordsByDate);
+        let allapicalls = [];
+        for(const recordlst of Object.values(mapRecordsByDate)) {          
+          allapicalls.push(downloadFilefromList(recordlst, instance_url, headers, data)); 
+        }
+        const results = await Promise.all(allapicalls);
+        return true;
     }  
   } catch(error){
-    console.error(`Error: ${error}`);
-    dialog.showErrorBox('Error', error.message);    
+    console.error(`Error: ${error}`);    
+    if(error.message && error.message.includes('cancelled by user')) { }    
+    else {
+      mainWindow.webContents.send('downloadincomplete'); 
+      dialog.showErrorBox('Error', error.message);
+    }       
+    return;
   }
 }
 
@@ -219,8 +223,17 @@ async function getaccesstokenfromcli(org) {
   }
 }
 
+function getSettingsPath() {
+  const userHomeDir = os.homedir();
+  return userHomeDir+'/.electron/sfeventlogdownloader';
+}
+
 async function savesettingfile(data) {
-  fs.writeFile('app/settings.json', data, (err) => {
+  const filepath = getSettingsPath();
+  if (!fs.existsSync(filepath)) {
+    fs.mkdirSync(filepath, { recursive: true });
+  }
+  fs.writeFile(filepath+'/settings.json', data, (err) => {
     if (err) { console.error(`settings.json update failed: ${err}`); }
     else console.log('settings.json updated');
   });
@@ -228,12 +241,48 @@ async function savesettingfile(data) {
 
 async function readsettingfile() {
   try{
-    const data = await fsPromise.readFile('app/settings.json');     
+    const data = await fsPromise.readFile(getSettingsPath()+'/settings.json');     
     const jsonData = JSON.parse(data);
     return jsonData;    
   } catch(err) {
     console.error(`Error: ${err}`); 
   }
+}
+
+async function downloadFilefromList(records, instance_url, headers, data) {
+    let results = [];
+    for(let record of records){
+      
+      if(!doDownloading) {
+        //console.log('Operation cancelled by user');
+        mainWindow.webContents.send('downloadcancelled');
+        throw new Error('Operation cancelled by user');
+      }
+      //console.log(record);
+      const ids = record.Id;
+      const types = record.EventType;
+      const dates = record.LogDate;
+      const interval = record.Interval;
+      
+      const url = instance_url+'/services/data/v'+API_VERSION+'/sobjects/EventLogFile/'+ids+'/LogFile';
+
+      let slicelimit = 13;
+      if(interval && interval=='Daily') slicelimit = 10;
+      
+      let filename = path.join(data.outputFolder, `${dates.slice(0, slicelimit)}-${types}.csv`);
+      
+      if(data.seperatefolder) {  
+        let folder = path.join(data.outputFolder, `${dates.slice(0, 10)}`);
+        if(interval && interval=='Daily') filename = path.join(folder, `${types}.csv`);
+        else filename = path.join(folder, `${dates.slice(11, 13)}-${types}.csv`);
+        if (!fs.existsSync(folder)) {
+          fs.mkdirSync(folder, { recursive : true });
+        }
+      }
+      results.push(await downloadFile(url, headers, filename));
+      //mainWindow.webContents.send('filedownloadupdate');
+    }
+    return results;
 }
 
 async function downloadFile(url, headers, filename) {
@@ -255,7 +304,10 @@ async function downloadFile(url, headers, filename) {
     } else {
       response.data.pipe(writer);
     }
-    writer.on('finish', resolve);
+    writer.on('finish', () => {
+      mainWindow.webContents.send('filedownloadupdate');
+      resolve();
+    });
     writer.on('error', reject);
 
   });

@@ -1,19 +1,27 @@
 {
   "name": "sf-event-log-downloader",
   "productName": "SFEventLogDownloader",
-  "description": "Salesforce event log downloader",
+  "description": "Salesforce mass event log downloader",
   "keywords": [],
   "main": "./app/main.js",
   "version": "1.0.0",
   "author": "Amritesh",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "win": {
+      "target": "portable"
+    }
   },
   "dependencies": {
     "axios": "1.3.4",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
-    "electron": "25.4.0"
+    "electron": "25.4.0",
+    "electron-builder": "^24.6.3"
   }
 }

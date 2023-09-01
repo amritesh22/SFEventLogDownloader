@@ -3,3 +3,4 @@ out/
 app/settings.json
 extra/
 package-lock.json
+dist/

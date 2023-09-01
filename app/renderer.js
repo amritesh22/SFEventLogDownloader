@@ -6,7 +6,7 @@ const { electronApi } = window;
 const app = createApp({
     setup() {
         onMounted(() => {
-            startdate.value = new Date(new Date().getTime() - (300 * 24 * 60 * 60 * 1000)).toISOString().substring(0, 10);
+            startdate.value = new Date(new Date().getTime() - (31 * 24 * 60 * 60 * 1000)).toISOString().substring(0, 10);
             enddate.value = new Date().toISOString().substring(0, 10);            
             readsetting();       
             if(settings.value.authorization==='cli') {
@@ -36,7 +36,7 @@ const app = createApp({
         const fileprogress = ref({
             totalfiles: 0,
             filesdownloaded: 0,
-            status: 0  // 0=not started, 1=started, 2=inprogress
+            status: 0  // 0=not started, 1=started, 2=inprogress, 3=complete, 4=cancelled, 5=incomplete
         })
 
         const orgdetails = computed(() => {
@@ -158,6 +158,15 @@ const app = createApp({
             } 
         }
 
+        async function canceldownload() {
+            if (!electronApi) return;
+            try{
+                electronApi.canceldownload();
+            } catch(err) {           
+                console.error(err);                 
+            } 
+        }
+
         if(electronApi){
             electronApi.filesfound((event, data) => {
                 if(data){
@@ -170,7 +179,17 @@ const app = createApp({
             });
             electronApi.filedownloadcomplete((event) => {
                 fileprogress.value.totalfiles = 0;
-                fileprogress.value.status = 0;
+                fileprogress.value.status = 3;
+                fileprogress.value.filesdownloaded = 0;
+            });
+            electronApi.downloadcancelled((event) => {
+                fileprogress.value.totalfiles = 0;
+                fileprogress.value.status = 4;
+                fileprogress.value.filesdownloaded = 0;
+            });
+            electronApi.downloadincomplete((event) => {
+                fileprogress.value.totalfiles = 0;
+                fileprogress.value.status = 5;
                 fileprogress.value.filesdownloaded = 0;
             });
         }   
@@ -178,7 +197,7 @@ const app = createApp({
         return {
             selectedsidebarnav, settings, selectedeventtype, interval, startdate, enddate, eventtypelist, 
             orgdetails, fileprogress, progressRate, authorizationoptionlist,
-            downloadlogs, fetchOrgList, selectFolder
+            downloadlogs, fetchOrgList, selectFolder, canceldownload
         };
     },
 });
